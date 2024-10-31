@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/alexmullins/zip"
+	mullinsZip "github.com/alexmullins/zip" // 外部ライブラリをインポート
 )
 
 // HTTPエントリポイント
@@ -49,8 +49,12 @@ func CreateZip(w http.ResponseWriter, r *http.Request) {
 	}
 	defer zipFile.Close()
 
-	zipWriter := zip.NewWriter(zipFile)
-	defer zipWriter.Close()
+	zipWriter := mullinsZip.NewWriter(zipFile) // パスワード対応ライブラリを使用
+	defer func() {
+		if err := zipWriter.Close(); err != nil {
+			http.Error(w, "Failed to close zip writer", http.StatusInternalServerError)
+		}
+	}()
 
 	for _, fileHeader := range files {
 		file, err := fileHeader.Open()
@@ -73,7 +77,12 @@ func CreateZip(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// ZIP ファイルを読み込み、HTTP レスポンスに返す
+	// zipWriter.Close() の完了を待ち、ZIP ファイルを読み込み、HTTP レスポンスに返す
+	if err := zipWriter.Close(); err != nil {
+		http.Error(w, "Failed to finalize zip file", http.StatusInternalServerError)
+		return
+	}
+
 	zipData, err := os.ReadFile(zipPath)
 	if err != nil {
 		http.Error(w, "Failed to read zip file", http.StatusInternalServerError)
