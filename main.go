@@ -52,7 +52,8 @@ func CreateZip(w http.ResponseWriter, r *http.Request) {
 	zipWriter := mullinsZip.NewWriter(zipFile) // パスワード対応ライブラリを使用
 	defer func() {
 		if err := zipWriter.Close(); err != nil {
-			http.Error(w, "Failed to close zip writer", http.StatusInternalServerError)
+			// エラーメッセージをHTTPレスポンスに書き込むのではなく、ログに記録する
+			fmt.Fprintf(os.Stderr, "Failed to close zip writer: %v\n", err)
 		}
 	}()
 
@@ -77,9 +78,9 @@ func CreateZip(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// zipWriter.Close() の完了を待ち、ZIP ファイルを読み込み、HTTP レスポンスに返す
 	if err := zipWriter.Close(); err != nil {
-		http.Error(w, "Failed to finalize zip file", http.StatusInternalServerError)
+		// ここでエラーメッセージをHTTPレスポンスに書き込まない
+		fmt.Fprintf(os.Stderr, "Failed to finalize zip file: %v\n", err)
 		return
 	}
 
